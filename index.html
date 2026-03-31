@@ -585,91 +585,100 @@
     <script>
         // ============== AI Chat Bot Configuration ==============
 
+// ============== AI Chat Bot Configuration (آمن عبر Netlify) ==============
 const API_URL = "/.netlify/functions/chat";
 
 let chatMessages = document.getElementById('chatMessages');
 let chatInput = document.getElementById('chatInput');
-        
-        let chatMessages = document.getElementById('chatMessages');
-        let chatInput = document.getElementById('chatInput');
-        
-        // Function to update chat position based on language
-        function updateChatPosition() {
-            const chatBtn = document.getElementById('chatToggleBtn');
-            const chatWindow = document.getElementById('chatWindow');
-            const isRTL = document.documentElement.dir === 'rtl';
-            
-            if (isRTL) {
-                chatBtn.style.left = '20px';
-                chatBtn.style.right = 'auto';
-                chatWindow.style.left = '20px';
-                chatWindow.style.right = 'auto';
-            } else {
-                chatBtn.style.right = '20px';
-                chatBtn.style.left = 'auto';
-                chatWindow.style.right = '20px';
-                chatWindow.style.left = 'auto';
-            }
+
+// تحديث مكان الشات حسب اللغة (كما هو موجود)
+function updateChatPosition() {
+    const chatBtn = document.getElementById('chatToggleBtn');
+    const chatWindow = document.getElementById('chatWindow');
+    const isRTL = document.documentElement.dir === 'rtl';
+    if (isRTL) {
+        chatBtn.style.left = '20px';
+        chatBtn.style.right = 'auto';
+        chatWindow.style.left = '20px';
+        chatWindow.style.right = 'auto';
+    } else {
+        chatBtn.style.right = '20px';
+        chatBtn.style.left = 'auto';
+        chatWindow.style.right = '20px';
+        chatWindow.style.left = 'auto';
+    }
+}
+
+// دوال واجهة المستخدم (تأكد من وجودها)
+function toggleChat() {
+    document.getElementById('chatWindow').classList.toggle('closed');
+}
+function closeChat() {
+    document.getElementById('chatWindow').classList.add('closed');
+}
+function addMessage(text, isUser = false) {
+    const messageDiv = document.createElement('div');
+    messageDiv.className = `message ${isUser ? 'user' : 'bot'}`;
+    messageDiv.innerHTML = text;
+    chatMessages.appendChild(messageDiv);
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+}
+function showTypingIndicator() {
+    const typingDiv = document.createElement('div');
+    typingDiv.className = 'message bot typing';
+    typingDiv.id = 'typingIndicator';
+    typingDiv.innerHTML = `<div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div>`;
+    chatMessages.appendChild(typingDiv);
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+}
+function removeTypingIndicator() {
+    const indicator = document.getElementById('typingIndicator');
+    if (indicator) indicator.remove();
+}
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+function handleChatKeyPress(event) {
+    if (event.key === 'Enter') sendMessage();
+}
+
+// الدالة الأساسية للإرسال
+async function sendMessage() {
+    const message = chatInput.value.trim();
+    if (!message) return;
+
+    addMessage(escapeHtml(message), true);
+    chatInput.value = '';
+    showTypingIndicator();
+
+    try {
+        const response = await fetch(API_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ message: message })
+        });
+        const data = await response.json();
+        removeTypingIndicator();
+        if (response.ok) {
+            addMessage(data.reply, false);
+        } else {
+            addMessage('❌ خطأ: ' + (data.error || 'فشل الاتصال بالخادم'), false);
         }
-        
-        // Chat UI Functions
-        function toggleChat() {
-            const chatWindow = document.getElementById('chatWindow');
-            chatWindow.classList.toggle('closed');
-        }
-        
-        function closeChat() {
-            document.getElementById('chatWindow').classList.add('closed');
-        }
-        
-        function addMessage(text, isUser = false) {
-            const messageDiv = document.createElement('div');
-            messageDiv.className = `message ${isUser ? 'user' : 'bot'}`;
-            messageDiv.innerHTML = text;
-            chatMessages.appendChild(messageDiv);
-            chatMessages.scrollTop = chatMessages.scrollHeight;
-            return messageDiv;
-        }
-        
-        function showTypingIndicator() {
-            const typingDiv = document.createElement('div');
-            typingDiv.className = 'message bot typing';
-            typingDiv.id = 'typingIndicator';
-            typingDiv.innerHTML = `
-                <div class="typing-dot"></div>
-                <div class="typing-dot"></div>
-                <div class="typing-dot"></div>
-            `;
-            chatMessages.appendChild(typingDiv);
-            chatMessages.scrollTop = chatMessages.scrollHeight;
-        }
-        
-        function removeTypingIndicator() {
-            const indicator = document.getElementById('typingIndicator');
-            if (indicator) indicator.remove();
-        }
-        
-        async function sendMessage() {
-            const message = chatInput.value.trim();
-            if (!message) return;
-            
-            // Add user message
-            addMessage(escapeHtml(message), true);
-            chatInput.value = '';
-            
-            // Show typing indicator
-            showTypingIndicator();
-            
-            try {
-                const response = await callDeepSeekAPI(message);
-                removeTypingIndicator();
-                addMessage(response, false);
-            } catch (error) {
-                removeTypingIndicator();
-                console.error('API Error:', error);
-                addMessage('❌ عذراً، حدث خطأ في الاتصال. يرجى التحقق من الإتصال والمحاولة مرة أخرى.', false);
-            }
-        }
+    } catch (error) {
+        removeTypingIndicator();
+        console.error('Error:', error);
+        addMessage('❌ فشل الاتصال بالخادم. تأكد من إعدادات Netlify Function.', false);
+    }
+}
+
+// تأكد من إضافة مستمعي الأحداث (Event Listeners) في نهاية الملف
+document.getElementById('chatToggleBtn')?.addEventListener('click', toggleChat);
+document.getElementById('closeChatBtn')?.addEventListener('click', closeChat);
+document.getElementById('chatHeader')?.addEventListener('click', (e) => {
+    if (e.target !== document.getElementById('closeChatBtn')) toggleChat();
+});
         
 async function callDeepSeekAPI(userMessage) {
     try {
