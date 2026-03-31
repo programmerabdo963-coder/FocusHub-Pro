@@ -1,0 +1,1049 @@
+﻿<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>FocusHub Pro | Study Tools with AI Assistant</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/sweetalert2/11.7.3/sweetalert2.all.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700;900&family=Inter:wght@400;700;900&display=swap');
+        
+        :root {
+            --bg-main: #f1f5f9; --bg-side: #ffffff; --text-main: #1e293b; --border: #e2e8f0;
+            --btn-shadow: 4px 4px 8px #cbd5e1, -4px -4px 8px #ffffff; --btn-bg: #ffffff;
+            --chat-bg: #ffffff;
+            --chat-user-bg: #4f46e5;
+            --chat-bot-bg: #f1f5f9;
+        }
+
+        .dark-mode {
+            --bg-main: #0f172a; --bg-side: #1e293b; --text-main: #f1f5f9; --border: #334155;
+            --btn-shadow: 4px 4px 10px #080e1a, -1px -1px 5px #1e293b; --btn-bg: #1e293b;
+            --chat-bg: #1e293b;
+            --chat-user-bg: #6366f1;
+            --chat-bot-bg: #334155;
+        }
+
+        body { 
+            font-family: 'Tajawal', 'Inter', sans-serif; background: var(--bg-main); color: var(--text-main);
+            height: 100vh; overflow: hidden; transition: 0.3s ease; display: flex; flex-direction: column;
+        }
+
+        .sidebar { 
+            background: var(--bg-side); 
+            border-inline-start: 1px solid var(--border); 
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            width: 18rem;
+        }
+        
+        .sidebar.collapsed { margin-inline-start: -18rem; opacity: 0; visibility: hidden; }
+
+        .btn-3d { background: var(--btn-bg); box-shadow: var(--btn-shadow); border: 1px solid var(--border); transition: all 0.2s ease; cursor: pointer; }
+        .btn-3d:active { transform: scale(0.95); box-shadow: inset 2px 2px 5px rgba(0,0,0,0.1); }
+
+        .tool-btn { 
+            width: 44px;
+            height: 44px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 14px;
+            position: relative;
+            transition: all 0.3s ease;
+            background: var(--btn-bg);
+            box-shadow: var(--btn-shadow);
+            border: 1px solid var(--border);
+            font-size: 1.1rem;
+            cursor: pointer;
+        }
+        
+        .active-tool { 
+            border: 2px solid #4f46e5; 
+            transform: scale(1.02);
+            box-shadow: none;
+            background: rgba(79, 70, 229, 0.1) !important;
+            color: #4f46e5 !important; 
+        }
+        .active-tool::after { 
+            content: "\f058"; 
+            font-family: "Font Awesome 6 Free"; 
+            font-weight: 900; 
+            position: absolute; 
+            top: -4px; 
+            right: -4px; 
+            background: #4f46e5; 
+            color: white; 
+            border-radius: 50%; 
+            font-size: 9px; 
+            padding: 2px; 
+        }
+
+        .clear-btn {
+            width: 44px;
+            height: 44px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 14px;
+            background: var(--btn-bg);
+            box-shadow: var(--btn-shadow);
+            border: 1px solid var(--border);
+            font-size: 1.1rem;
+            color: #ef4444;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .clear-btn:active {
+            transform: scale(0.95);
+            box-shadow: inset 2px 2px 5px rgba(0,0,0,0.1);
+        }
+
+        #viewport-container { flex: 1; overflow: auto; display: flex; justify-content: center; align-items: flex-start; padding: 40px; transition: all 0.4s ease; }
+        
+        #work-area { 
+            position: relative; 
+            background: white; 
+            box-shadow: 0 30px 60px rgba(0,0,0,0.3); 
+            transform-origin: top center;
+            direction: ltr;
+            unicode-bidi: embed;
+        }
+        
+        #draw-canvas { position: absolute; top: 0; left: 0; cursor: crosshair; touch-action: none; }
+        
+        .floating-nav { position: fixed; bottom: 25px; left: 50%; transform: translateX(-50%); z-index: 100; background: #1e293b; padding: 12px 24px; border-radius: 50px; display: flex; gap: 15px; color: white; box-shadow: 0 15px 35px rgba(0,0,0,0.5); }
+        select { background-color: var(--btn-bg) !important; color: var(--text-main) !important; box-shadow: var(--btn-shadow); padding: 8px; border-radius: 12px; font-size: 13px; }
+        
+        canvas {
+            display: block;
+            direction: ltr;
+        }
+        
+        .rest-mode-active {
+            background: linear-gradient(135deg, #10b981, #059669);
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.85; }
+        }
+        
+        .opacity-control-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-top: 8px;
+        }
+        
+        .opacity-value {
+            min-width: 45px;
+            text-align: center;
+            font-weight: bold;
+            font-size: 13px;
+            color: #4f46e5;
+            background: rgba(79, 70, 229, 0.1);
+            padding: 4px 8px;
+            border-radius: 12px;
+        }
+        
+        .shortcut-hint {
+            font-size: 9px;
+            opacity: 0.6;
+            margin-top: 2px;
+            font-family: monospace;
+        }
+        
+        .tool-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+            margin-bottom: 12px;
+            justify-items: center;
+            align-items: center;
+        }
+        
+        .shape-options {
+            display: flex;
+            gap: 8px;
+            margin-top: 8px;
+            padding: 8px;
+            background: rgba(79, 70, 229, 0.1);
+            border-radius: 16px;
+        }
+        
+        .shape-option-btn {
+            flex: 1;
+            padding: 6px 8px;
+            border-radius: 12px;
+            font-size: 10px;
+            font-weight: bold;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            background: var(--btn-bg);
+            border: 1px solid var(--border);
+        }
+        
+        .shape-option-btn.active-shape-option {
+            background: #4f46e5;
+            color: white;
+            border-color: #4f46e5;
+        }
+        
+        /* Chat Bot Styles */
+        .chat-toggle-btn {
+            position: fixed;
+            bottom: 20px;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #4f46e5, #7c3aed);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: 0 10px 25px rgba(79, 70, 229, 0.3);
+            z-index: 200;
+            transition: all 0.3s ease;
+            border: none;
+        }
+        
+        .chat-toggle-btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 15px 35px rgba(79, 70, 229, 0.4);
+        }
+        
+        .chat-window {
+            position: fixed;
+            bottom: 90px;
+            width: 380px;
+            height: 500px;
+            background: var(--chat-bg);
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+            display: flex;
+            flex-direction: column;
+            z-index: 199;
+            transition: all 0.3s ease;
+            border: 1px solid var(--border);
+            overflow: hidden;
+        }
+        
+        .chat-window.closed {
+            display: none;
+        }
+        
+        .chat-header {
+            background: linear-gradient(135deg, #4f46e5, #7c3aed);
+            color: white;
+            padding: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+        }
+        
+        .chat-header h3 {
+            font-size: 16px;
+            margin: 0;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .chat-header i {
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        
+        .chat-header i:hover {
+            opacity: 0.8;
+        }
+        
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        
+        .message {
+            max-width: 85%;
+            padding: 10px 14px;
+            border-radius: 18px;
+            font-size: 14px;
+            line-height: 1.4;
+            word-wrap: break-word;
+        }
+        
+        .message.user {
+            background: var(--chat-user-bg);
+            color: white;
+            align-self: flex-end;
+            border-bottom-right-radius: 5px;
+        }
+        
+        .message.bot {
+            background: var(--chat-bot-bg);
+            color: var(--text-main);
+            align-self: flex-start;
+            border-bottom-left-radius: 5px;
+        }
+        
+        .message.typing {
+            background: var(--chat-bot-bg);
+            color: var(--text-main);
+            align-self: flex-start;
+            display: flex;
+            gap: 4px;
+            padding: 12px 16px;
+        }
+        
+        .typing-dot {
+            width: 8px;
+            height: 8px;
+            background: #4f46e5;
+            border-radius: 50%;
+            animation: typing 1.4s infinite;
+        }
+        
+        .typing-dot:nth-child(2) { animation-delay: 0.2s; }
+        .typing-dot:nth-child(3) { animation-delay: 0.4s; }
+        
+        @keyframes typing {
+            0%, 60%, 100% { transform: translateY(0); opacity: 0.5; }
+            30% { transform: translateY(-10px); opacity: 1; }
+        }
+        
+        .chat-input-area {
+            padding: 15px;
+            border-top: 1px solid var(--border);
+            display: flex;
+            gap: 10px;
+        }
+        
+        .chat-input-area input {
+            flex: 1;
+            padding: 10px 14px;
+            border: 1px solid var(--border);
+            border-radius: 25px;
+            background: var(--btn-bg);
+            color: var(--text-main);
+            font-family: inherit;
+            outline: none;
+        }
+        
+        .chat-input-area button {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: #4f46e5;
+            color: white;
+            border: none;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .chat-input-area button:hover {
+            transform: scale(1.05);
+            background: #6366f1;
+        }
+        
+        .chat-input-area button:active {
+            transform: scale(0.95);
+        }
+        
+        @media (max-width: 480px) {
+            .chat-window {
+                width: calc(100% - 40px);
+                height: 450px;
+            }
+        }
+        
+        .signature {
+            margin-top: auto;
+            text-align: center;
+            padding: 12px;
+            border-top: 1px solid var(--border);
+            font-size: 10px;
+            opacity: 0.7;
+            letter-spacing: 1px;
+        }
+    </style>
+</head>
+<body class="flex flex-col">
+
+    <header class="h-20 border-b flex items-center justify-between px-8 z-50 sidebar shadow-md shrink-0 !w-full !border-none">
+        <div class="flex items-center gap-4">
+            <button onclick="toggleSidebar()" class="btn-3d w-11 h-11 flex items-center justify-center rounded-xl text-indigo-600">
+                <i class="fas fa-bars text-xl"></i>
+            </button>
+            <div class="hidden md:flex w-12 h-12 bg-indigo-600 rounded-2xl items-center justify-center text-white shadow-xl">
+                <i class="fas fa-graduation-cap text-2xl"></i>
+            </div>
+            <h1 class="text-xl md:text-2xl font-black tracking-tight" id="logo-text">FocusHub <span class="text-indigo-600 font-bold">PRO</span></h1>
+        </div>
+
+        <div class="flex items-center gap-2 md:gap-4">
+            <button onclick="toggleLanguage()" class="btn-3d px-3 py-2 rounded-xl font-bold text-xs flex items-center gap-2">
+                <i class="fas fa-globe"></i><span id="lang-btn-text">English</span>
+            </button>
+            <button onclick="toggleDarkMode()" class="btn-3d w-10 h-10 md:w-11 md:h-11 rounded-xl flex items-center justify-center">
+                <i id="theme-icon" class="fas fa-moon text-indigo-500"></i>
+            </button>
+            <div id="timer-container" class="bg-slate-900 text-emerald-400 px-3 md:px-5 py-2 rounded-2xl flex items-center gap-2 md:gap-4 border-2 border-slate-700 transition-all">
+                <span id="timer-display" class="font-mono text-sm md:text-2xl font-black">25:00</span>
+                <button onclick="toggleTimer()" id="play-btn" class="hover:text-white transition-all"><i class="fas fa-play"></i></button>
+            </div>
+        </div>
+    </header>
+
+    <div class="flex flex-1 overflow-hidden relative">
+        <aside class="sidebar p-6 flex flex-col gap-6 overflow-y-auto shrink-0" id="mainSidebar">
+            <div class="space-y-3">
+                <h3 class="text-[10px] font-black text-slate-400 uppercase tracking-widest" data-key="session_config">نظام المذاكرة</h3>
+                <select id="timer-select" onchange="updateTimerSettings()" class="w-full p-2 rounded-xl border-2 font-bold outline-none text-sm">
+                    <option value="25" data-key="opt_25">📚 25 دقيقة عمل + 5 دقائق راحة</option>
+                    <option value="50" data-key="opt_50">🔥 50 دقيقة عمل + 10 دقائق راحة</option>
+                    <option value="15" data-key="opt_15">⚡ 15 دقيقة سريع + 3 دقائق راحة</option>
+                </select>
+            </div>
+
+            <hr class="opacity-50">
+
+            <div>
+                <h3 class="text-[10px] font-black text-slate-400 mb-4 uppercase tracking-widest" data-key="tool_box">لوحة الأدوات</h3>
+                
+                <div class="tool-grid">
+                    <button onclick="setTool('pen')" id="tool-pen" class="tool-btn active-tool"><i class="fas fa-pen-nib"></i></button>
+                    <button onclick="setTool('highlighter')" id="tool-highlighter" class="tool-btn"><i class="fas fa-highlighter"></i></button>
+                    <button onclick="setTool('eraser')" id="tool-eraser" class="tool-btn"><i class="fas fa-eraser"></i></button>
+                </div>
+                
+                <div class="tool-grid">
+                    <button onclick="setTool('rectangle')" id="tool-rectangle" class="tool-btn"><i class="fas fa-square"></i></button>
+                    <button onclick="setTool('circle')" id="tool-circle" class="tool-btn"><i class="fas fa-circle"></i></button>
+                    <button onclick="clearCurrentPage()" class="clear-btn" title="مسح الصفحة"><i class="fas fa-trash-can"></i></button>
+                </div>
+                
+                <div id="shape-options-panel" class="shape-options hidden">
+                    <button id="shape-outline-only" class="shape-option-btn active-shape-option">
+                        <i class="fas fa-border-all"></i> خط خارجي فقط
+                    </button>
+                    <button id="shape-filled" class="shape-option-btn">
+                        <i class="fas fa-fill-drip"></i> ممتلئ
+                    </button>
+                </div>
+                
+                <div class="flex gap-2 mb-4 mt-4">
+                    <button onclick="undo()" id="undo-btn" class="btn-3d flex-1 py-2 rounded-xl text-xs font-bold" data-key="undo">
+                        <i class="fas fa-undo"></i> تراجع <span class="shortcut-hint hidden md:inline">(Ctrl+Z)</span>
+                    </button>
+                    <button onclick="redo()" id="redo-btn" class="btn-3d flex-1 py-2 rounded-xl text-xs font-bold" data-key="redo">
+                        <i class="fas fa-redo"></i> إعـادة <span class="shortcut-hint hidden md:inline">(Ctrl+Y)</span>
+                    </button>
+                </div>
+
+                <div class="btn-3d p-4 rounded-2xl space-y-3">
+                    <div class="flex justify-between text-[10px] font-bold opacity-50"><span data-key="color">اللون</span><span data-key="size">الحجم</span></div>
+                    <div class="flex items-center gap-3">
+                        <input type="color" id="color-picker" value="#4f46e5" class="w-8 h-8 rounded-lg cursor-pointer bg-transparent border-0">
+                        <input type="range" id="size-picker" min="1" max="40" value="4" class="flex-1 accent-indigo-600">
+                    </div>
+                    
+                    <div id="pen-opacity-container">
+                        <div class="flex justify-between text-[10px] font-bold opacity-50 mt-2">
+                            <span data-key="pen_opacity">شفافية القلم</span>
+                            <span id="pen-opacity-value" class="text-indigo-600">100%</span>
+                        </div>
+                        <div class="opacity-control-wrapper">
+                            <input type="range" id="pen-opacity-picker" min="0" max="100" value="100" class="flex-1 accent-indigo-400">
+                            <span id="pen-opacity-number" class="opacity-value">100%</span>
+                        </div>
+                    </div>
+                    
+                    <div id="highlighter-opacity-container" class="hidden">
+                        <div class="flex justify-between text-[10px] font-bold opacity-50 mt-2">
+                            <span data-key="highlighter_opacity">شفافية الهايلايتر</span>
+                            <span id="highlighter-opacity-value" class="text-emerald-600">40%</span>
+                        </div>
+                        <div class="opacity-control-wrapper">
+                            <input type="range" id="highlighter-opacity-picker" min="0" max="100" value="40" class="flex-1 accent-emerald-400">
+                            <span id="highlighter-opacity-number" class="opacity-value">40%</span>
+                        </div>
+                    </div>
+                    
+                    <div id="shape-opacity-container" class="hidden">
+                        <div class="flex justify-between text-[10px] font-bold opacity-50 mt-2">
+                            <span data-key="shape_opacity">شفافية الشكل</span>
+                            <span id="shape-opacity-value" class="text-purple-600">100%</span>
+                        </div>
+                        <div class="opacity-control-wrapper">
+                            <input type="range" id="shape-opacity-picker" min="0" max="100" value="100" class="flex-1 accent-purple-400">
+                            <span id="shape-opacity-number" class="opacity-value">100%</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="space-y-3 pt-2">
+                <button onclick="saveAndDownloadPDF()" class="btn-3d w-full py-3 bg-indigo-600 text-white rounded-xl font-bold flex items-center justify-center gap-2">
+                    <i class="fas fa-file-export"></i> <span data-key="export">تصدير كـ PDF</span>
+                </button>
+                <button onclick="closeFileWithCheck()" class="btn-3d w-full py-2 rounded-xl text-[10px] font-black uppercase tracking-tighter" data-key="change_file">تغيير الملف الحالي</button>
+                <label class="btn-3d block w-full py-3 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-400 rounded-xl text-center cursor-pointer font-bold text-xs">
+                    <i class="fas fa-cloud-arrow-up ml-1"></i> <span data-key="upload">رفع ملف جديد</span>
+                    <input type="file" id="file-input" class="hidden" accept="application/pdf">
+                </label>
+            </div>
+
+            <button onclick="exitApplication()" class="btn-3d w-full py-3 bg-red-50 dark:bg-red-900/10 text-red-600 dark:text-red-400 rounded-xl font-bold flex items-center justify-center gap-2">
+                <i class="fas fa-sign-out-alt"></i> <span data-key="exit_btn">إنهاء المذاكرة</span>
+            </button>
+
+            <div class="mt-auto btn-3d p-4 rounded-2xl flex items-center gap-4">
+                <div class="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center text-white text-xl">🏆</div>
+                <div>
+                    <p class="text-[10px] font-bold uppercase opacity-50" data-key="today_goal">إنجاز اليوم</p>
+                    <p class="text-lg font-black"><span id="session-count">0</span> <span data-key="sessions">جلسة</span></p>
+                    <p class="text-[8px] opacity-50 mt-1" id="rest-status"></p>
+                </div>
+            </div>
+            
+            <div class="signature">
+                <i class="fas fa-code"></i> Made By Eng/<span class="font-bold text-indigo-500">Abdelrahman Awaad</span>
+                <div class="text-[8px] mt-1">© 2026 FocusHub Pro</div>
+            </div>
+        </aside>
+
+        <main class="flex-1 flex flex-col relative overflow-hidden bg-slate-200 dark:bg-slate-900/50">
+            <div class="h-10 sidebar border-b flex items-center justify-center gap-6 shrink-0 !w-full !border-none">
+                <button onclick="adjustZoom(-0.1)" class="btn-3d w-7 h-7 rounded flex items-center justify-center"><i class="fas fa-minus text-[10px]"></i></button>
+                <input type="range" id="zoom-range" min="0.3" max="3" step="0.1" value="1" oninput="updateZoom(this.value)" class="w-32 md:w-40 accent-indigo-600">
+                <button onclick="adjustZoom(0.1)" class="btn-3d w-7 h-7 rounded flex items-center justify-center"><i class="fas fa-plus text-[10px]"></i></button>
+                <span id="zoom-label" class="text-indigo-600 font-black w-10 md:w-12 text-center text-[10px] md:text-xs">100%</span>
+            </div>
+
+            <div id="viewport-container">
+                <div id="work-area">
+                    <canvas id="pdf-canvas"></canvas>
+                    <canvas id="draw-canvas"></canvas>
+                </div>
+            </div>
+
+            <div id="nav-ui" class="floating-nav hidden">
+                <button onclick="changePage(-1)" id="prev-btn" class="hover:text-indigo-400">السابق</button>
+                <span class="px-3 border-x border-white/20 text-[10px] md:text-xs font-bold whitespace-nowrap"><span data-key="page">صفحة</span> <span id="cur-p">1</span> / <span id="total-p">1</span></span>
+                <button onclick="changePage(1)" id="next-btn" class="hover:text-indigo-400">التالي</button>
+            </div>
+        </main>
+    </div>
+
+    <!-- Chat Bot Button -->
+    <button class="chat-toggle-btn" id="chatToggleBtn">
+        <i class="fas fa-robot fa-2x"></i>
+    </button>
+
+    <!-- Chat Window -->
+    <div class="chat-window closed" id="chatWindow">
+        <div class="chat-header" id="chatHeader">
+            <h3>
+                <i class="fas fa-robot"></i>
+                <span>AI Study Assistant</span>
+            </h3>
+            <i class="fas fa-times" id="closeChatBtn"></i>
+        </div>
+        <div class="chat-messages" id="chatMessages">
+            <div class="message bot">
+                👋 مرحباً! أنا مساعدك الذكي للدراسة. اسألني أي سؤال عن المواد الدراسية، أو اطلب مني شرح أي موضوع، وسأجيبك فوراً!
+            </div>
+        </div>
+        <div class="chat-input-area">
+            <input type="text" id="chatInput" placeholder="اكتب سؤالك هنا..." onkeypress="handleChatKeyPress(event)">
+            <button onclick="sendMessage()">
+                <i class="fas fa-paper-plane"></i>
+            </button>
+        </div>
+    </div>
+
+    <audio id="alert-sound" src="https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3"></audio>
+    <audio id="rest-sound" src="https://assets.mixkit.co/active_storage/sfx/2870/2870-preview.mp3"></audio>
+
+    <script>
+        // ============== AI Chat Bot Configuration ==============
+        // ⚠️ هام: قم بتغيير هذا المفتاح بمفتاحك الشخصي من موقع DeepSeek
+        // روح على: https://platform.deepseek.com/ وسجل دخولك ثم أنشئ مفتاح جديد
+        const API_KEY = "sk-46e6b214760d4654a640bd1bfab8e882"; // استبدل هذا بمفتاحك الحقيقي
+        const API_URL = "https://api.deepseek.com/v1/chat/completions";
+        
+        let chatMessages = document.getElementById('chatMessages');
+        let chatInput = document.getElementById('chatInput');
+        
+        // Function to update chat position based on language
+        function updateChatPosition() {
+            const chatBtn = document.getElementById('chatToggleBtn');
+            const chatWindow = document.getElementById('chatWindow');
+            const isRTL = document.documentElement.dir === 'rtl';
+            
+            if (isRTL) {
+                chatBtn.style.left = '20px';
+                chatBtn.style.right = 'auto';
+                chatWindow.style.left = '20px';
+                chatWindow.style.right = 'auto';
+            } else {
+                chatBtn.style.right = '20px';
+                chatBtn.style.left = 'auto';
+                chatWindow.style.right = '20px';
+                chatWindow.style.left = 'auto';
+            }
+        }
+        
+        // Chat UI Functions
+        function toggleChat() {
+            const chatWindow = document.getElementById('chatWindow');
+            chatWindow.classList.toggle('closed');
+        }
+        
+        function closeChat() {
+            document.getElementById('chatWindow').classList.add('closed');
+        }
+        
+        function addMessage(text, isUser = false) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${isUser ? 'user' : 'bot'}`;
+            messageDiv.innerHTML = text;
+            chatMessages.appendChild(messageDiv);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+            return messageDiv;
+        }
+        
+        function showTypingIndicator() {
+            const typingDiv = document.createElement('div');
+            typingDiv.className = 'message bot typing';
+            typingDiv.id = 'typingIndicator';
+            typingDiv.innerHTML = `
+                <div class="typing-dot"></div>
+                <div class="typing-dot"></div>
+                <div class="typing-dot"></div>
+            `;
+            chatMessages.appendChild(typingDiv);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+        
+        function removeTypingIndicator() {
+            const indicator = document.getElementById('typingIndicator');
+            if (indicator) indicator.remove();
+        }
+        
+        async function sendMessage() {
+            const message = chatInput.value.trim();
+            if (!message) return;
+            
+            // Add user message
+            addMessage(escapeHtml(message), true);
+            chatInput.value = '';
+            
+            // Show typing indicator
+            showTypingIndicator();
+            
+            try {
+                const response = await callDeepSeekAPI(message);
+                removeTypingIndicator();
+                addMessage(response, false);
+            } catch (error) {
+                removeTypingIndicator();
+                console.error('API Error:', error);
+                addMessage('❌ عذراً، حدث خطأ في الاتصال. يرجى التحقق من مفتاح API والمحاولة مرة أخرى.', false);
+            }
+        }
+        
+        async function callDeepSeekAPI(userMessage) {
+            const systemPrompt = `أنت مساعد تعليمي ذكي متخصص في مساعدة الطلاب. أنت تتحدث باللغة العربية الفصحى. 
+            مهمتك هي:
+            1. الإجابة على أسئلة الطلاب الدراسية بشكل دقيق ومفيد
+            2. شرح المفاهيم الصعبة بطريقة مبسطة
+            3. تقديم أمثلة وتوضيحات عند الحاجة
+            4. تشجيع الطالب على التعلم والاستمرار
+            كن ودوداً ومحفزاً في ردودك.`;
+            
+            const response = await fetch(API_URL, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${API_KEY}`
+                },
+                body: JSON.stringify({
+                    model: "deepseek-chat",
+                    messages: [
+                        { role: "system", content: systemPrompt },
+                        { role: "user", content: userMessage }
+                    ],
+                    temperature: 0.7,
+                    max_tokens: 1000,
+                    stream: false
+                })
+            });
+            
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error?.message || 'API request failed');
+            }
+            
+            const data = await response.json();
+            return data.choices[0].message.content;
+        }
+        
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+        
+        function handleChatKeyPress(event) {
+            if (event.key === 'Enter') {
+                sendMessage();
+            }
+        }
+        
+        // ============== Original Application Code ==============
+        function toggleSidebar() { const sidebar = document.getElementById('mainSidebar'); sidebar.classList.toggle('collapsed'); setTimeout(autoFit, 400); }
+
+        const translations = {
+            ar: { dir: "rtl", font: "Tajawal", langBtn: "English", session_config: "نظام المذاكرة", opt_25: "📚 25 دقيقة عمل + 5 دقائق راحة", opt_50: "🔥 50 دقيقة عمل + 10 دقائق راحة", opt_15: "⚡ 15 دقيقة سريع + 3 دقائق راحة", tool_box: "لوحة الأدوات", color: "اللون", size: "الحجم", export: "تصدير كـ PDF", change_file: "تغيير الملف الحالي", upload: "رفع ملف جديد", today_goal: "إنجاز اليوم", sessions: "جلسة", page: "صفحة", prev: "السابق", next: "التالي", msg_first: "هذه الصفحة الأولى", msg_last: "وصلت للنهاية", msg_save: "هل تريد حفظ التعديلات؟", exit_btn: "إنهاء المذاكرة", exit_title: "هل انتهيت حقاً؟", exit_text: "لقد أتممت {count} جلسات مذاكرة رائعة!", exit_confirm: "نعم، إنهاء الجلسة", exit_cancel: "لا، إكمال المذاكرة", exit_finish_title: "عمل رائع!", exit_finish_text: "فخورون بمجهودك اليوم. نراك قريباً!", undo: "تراجع", redo: "إعادة", rest_start: "😊 وقت الراحة! استرخِ قليلاً", rest_end: "🎯 انتهت الراحة! حان وقت المذاكرة", work_start: "💪 وقت المذاكرة!", pen_opacity: "شفافية القلم", highlighter_opacity: "شفافية الهايلايتر", shape_opacity: "شفافية الشكل", outline_only: "خط خارجي فقط", filled: "ممتلئ" },
+            en: { dir: "ltr", font: "Inter", langBtn: "العربية", session_config: "Study Mode", opt_25: "📚 25 Min Work + 5 Min Break", opt_50: "🔥 50 Min Work + 10 Min Break", opt_15: "⚡ 15 Min Sprint + 3 Min Break", tool_box: "Tools Palette", color: "Color", size: "Size", export: "Export to PDF", change_file: "Change Document", upload: "Upload PDF", today_goal: "Daily Goal", sessions: "Sessions", page: "Page", prev: "Previous", next: "Next", msg_first: "First Page reached", msg_last: "Last Page reached", msg_save: "Save changes before closing?", exit_btn: "Finish Session", exit_title: "Are you sure?", exit_text: "You have completed {count} great study sessions!", exit_confirm: "Yes, Finish Session", exit_cancel: "No, Continue Studying", exit_finish_title: "Excellent Work!", exit_finish_text: "We are proud of your effort today. See you soon!", undo: "Undo", redo: "Redo", rest_start: "😊 Break time! Relax a bit", rest_end: "🎯 Break ended! Time to study", work_start: "💪 Study time!", pen_opacity: "Pen Opacity", highlighter_opacity: "Highlighter Opacity", shape_opacity: "Shape Opacity", outline_only: "Outline Only", filled: "Filled" }
+        };
+
+        let currentLang = localStorage.getItem('focusLang') || 'ar';
+        function updateUI() {
+            const t = translations[currentLang]; document.documentElement.lang = currentLang; document.documentElement.dir = t.dir; document.body.style.fontFamily = t.font; document.getElementById('lang-btn-text').innerText = t.langBtn;
+            document.querySelectorAll('[data-key]').forEach(el => { const key = el.getAttribute('data-key'); if (t[key]) { const icon = el.querySelector('i'); if (icon && !el.querySelector('.shortcut-hint')) { el.innerHTML = ''; el.appendChild(icon); el.innerHTML += ' ' + t[key]; } else if (!el.querySelector('.shortcut-hint')) { el.innerText = t[key]; } } });
+            document.getElementById('undo-btn').innerHTML = `<i class="fas fa-undo"></i> ${t.undo} <span class="shortcut-hint hidden md:inline">(Ctrl+Z)</span>`;
+            document.getElementById('redo-btn').innerHTML = `<i class="fas fa-redo"></i> ${t.redo} <span class="shortcut-hint hidden md:inline">(Ctrl+Y)</span>`;
+            document.getElementById('prev-btn').innerHTML = currentLang === 'ar' ? '<i class="fas fa-chevron-right ml-2"></i> السابق' : 'Previous <i class="fas fa-chevron-left ml-2"></i>';
+            document.getElementById('next-btn').innerHTML = currentLang === 'ar' ? 'التالي <i class="fas fa-chevron-left mr-2"></i>' : '<i class="fas fa-chevron-right mr-2"></i> Next';
+            document.getElementById('shape-outline-only').innerHTML = `<i class="fas fa-border-all"></i> ${t.outline_only || 'خط خارجي فقط'}`;
+            document.getElementById('shape-filled').innerHTML = `<i class="fas fa-fill-drip"></i> ${t.filled || 'ممتلئ'}`;
+            
+            // Update chat position when language changes
+            updateChatPosition();
+        }
+        function toggleLanguage() { currentLang = currentLang === 'ar' ? 'en' : 'ar'; localStorage.setItem('focusLang', currentLang); updateUI(); }
+        function exitApplication() { const t = translations[currentLang]; const sessionsCount = document.getElementById('session-count').innerText; Swal.fire({ title: t.exit_title, text: t.exit_text.replace('{count}', sessionsCount), icon: 'question', showCancelButton: true, confirmButtonColor: '#4f46e5', cancelButtonColor: '#64748b', confirmButtonText: t.exit_confirm, cancelButtonText: t.exit_cancel }).then((result) => { if (result.isConfirmed) { Swal.fire({ title: t.exit_finish_title, text: t.exit_finish_text, icon: 'success', timer: 2000, showConfirmButton: false }).then(() => { window.location.href = "about:blank"; }); } }); }
+
+        const { jsPDF } = window.jspdf; pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js';
+        let pdfDoc = null, pageNum = 1, zoom = 1, isRunning = false, timeLeft = 1500, timer, sessions = 0;
+        let canvas = document.getElementById('pdf-canvas'), ctx = canvas.getContext('2d');
+        let dCanvas = document.getElementById('draw-canvas'), dctx = dCanvas.getContext('2d');
+        let painting = false, currentTool = 'pen', pageDrawings = {};
+        
+        let shapeStart = null;
+        let tempCanvas = null;
+        let tempCtx = null;
+        let shapeFillMode = 'outline';
+        
+        let isRestMode = false;
+        let currentWorkMinutes = 25;
+        let currentRestMinutes = 5;
+        
+        let undoStack = {}; let redoStack = {}; 
+        function saveState() { 
+            if (!undoStack[pageNum]) undoStack[pageNum] = []; 
+            undoStack[pageNum].push(dCanvas.toDataURL()); 
+            redoStack[pageNum] = []; 
+            updateUndoRedoButtons(); 
+        }
+        function undo() { 
+            if (!undoStack[pageNum] || undoStack[pageNum].length === 0) return; 
+            if (!redoStack[pageNum]) redoStack[pageNum] = []; 
+            redoStack[pageNum].push(dCanvas.toDataURL()); 
+            let lastState = undoStack[pageNum].pop(); 
+            applyState(lastState); 
+            updateUndoRedoButtons(); 
+        }
+        function redo() { 
+            if (!redoStack[pageNum] || redoStack[pageNum].length === 0) return; 
+            undoStack[pageNum].push(dCanvas.toDataURL()); 
+            let nextState = redoStack[pageNum].pop(); 
+            applyState(nextState); 
+            updateUndoRedoButtons(); 
+        }
+        function applyState(src) { 
+            let img = new Image(); 
+            img.onload = function() { 
+                dctx.clearRect(0, 0, dCanvas.width, dCanvas.height); 
+                dctx.drawImage(img, 0, 0); 
+            }; 
+            img.src = src; 
+        }
+        function updateUndoRedoButtons() { 
+            document.getElementById('undo-btn').disabled = !undoStack[pageNum] || undoStack[pageNum].length === 0; 
+            document.getElementById('redo-btn').disabled = !redoStack[pageNum] || redoStack[pageNum].length === 0; 
+        }
+
+        document.addEventListener('keydown', function(e) {
+            if (e.ctrlKey && e.key === 'z') {
+                e.preventDefault();
+                e.stopPropagation();
+                undo();
+                return false;
+            } else if (e.ctrlKey && e.key === 'y') {
+                e.preventDefault();
+                e.stopPropagation();
+                redo();
+                return false;
+            }
+        });
+
+        function initWhiteboard() { pdfDoc = null; canvas.width = 850; canvas.height = 1100; ctx.fillStyle = "white"; ctx.fillRect(0, 0, canvas.width, canvas.height); syncCanvases(); document.getElementById('nav-ui').classList.add('hidden'); autoFit(); undoStack = {}; redoStack = {}; updateUndoRedoButtons(); }
+        function syncCanvases() { dCanvas.width = canvas.width; dCanvas.height = canvas.height; dctx.lineCap = 'round'; dctx.lineJoin = 'round'; }
+
+        document.getElementById('file-input').onchange = e => { const file = e.target.files[0]; if (file) { const reader = new FileReader(); reader.onload = function() { pdfjsLib.getDocument({data: new Uint8Array(this.result)}).promise.then(pdf => { pdfDoc = pdf; pageNum = 1; pageDrawings = {}; undoStack = {}; redoStack = {}; document.getElementById('total-p').innerText = pdf.numPages; document.getElementById('nav-ui').classList.remove('hidden'); renderPage(true); }); }; reader.readAsArrayBuffer(file); } };
+        async function renderPage(isInitial = false) { const page = await pdfDoc.getPage(pageNum); const viewport = page.getViewport({scale: 2}); canvas.width = viewport.width; canvas.height = viewport.height; await page.render({canvasContext: ctx, viewport: viewport}).promise; syncCanvases(); if (pageDrawings[pageNum]) { const img = new Image(); img.onload = () => dctx.drawImage(img, 0, 0); img.src = pageDrawings[pageNum]; } else { dctx.clearRect(0,0,dCanvas.width, dCanvas.height); } document.getElementById('cur-p').innerText = pageNum; if(isInitial) autoFit(); document.getElementById('viewport-container').scrollTop = 0; updateUndoRedoButtons(); }
+        function autoFit() { const containerWidth = document.getElementById('viewport-container').clientWidth; const margin = 60; const scale = (containerWidth - margin) / canvas.width; updateZoom(Math.min(scale, 1.2)); }
+        function updateZoom(val) { zoom = val; document.getElementById('work-area').style.transform = `scale(${val})`; document.getElementById('zoom-range').value = val; document.getElementById('zoom-label').innerText = Math.round(val * 100) + '%'; }
+        function adjustZoom(delta) { let n = parseFloat(document.getElementById('zoom-range').value) + delta; if(n >= 0.3 && n <= 3) updateZoom(n); }
+
+        function getCoords(e) { const rect = dCanvas.getBoundingClientRect(); let clientX, clientY; if (e.touches && e.touches[0]) { clientX = e.touches[0].clientX; clientY = e.touches[0].clientY; } else { clientX = e.clientX; clientY = e.clientY; } return { x: (clientX - rect.left) / zoom, y: (clientY - rect.top) / zoom }; }
+        
+        function startPaint(e) { 
+            if (currentTool === 'rectangle' || currentTool === 'circle') {
+                startShape(e);
+                return;
+            }
+            saveState(); 
+            painting = true; 
+            const coords = getCoords(e); 
+            dctx.beginPath(); 
+            dctx.moveTo(coords.x, coords.y); 
+        }
+        
+        function draw(e) {
+            if ((currentTool === 'rectangle' || currentTool === 'circle') && shapeStart) {
+                drawShape(e);
+                return;
+            }
+            if (!painting) return; 
+            if(e.touches) e.preventDefault();
+            const coords = getCoords(e); 
+            const size = document.getElementById('size-picker').value; 
+            const color = document.getElementById('color-picker').value;
+            
+            let opacity = 1;
+            if (currentTool === 'pen') {
+                opacity = document.getElementById('pen-opacity-picker').value / 100;
+            } else if (currentTool === 'highlighter') {
+                opacity = document.getElementById('highlighter-opacity-picker').value / 100;
+            }
+
+            if (currentTool === 'eraser') { 
+                dctx.globalCompositeOperation = 'destination-out'; 
+                dctx.lineWidth = size * 4; 
+            }
+            else if (currentTool === 'highlighter') { 
+                dctx.globalCompositeOperation = 'source-over'; 
+                dctx.lineWidth = size * 6; 
+                let r = parseInt(color.slice(1,3), 16), g = parseInt(color.slice(3,5), 16), b = parseInt(color.slice(5,7), 16);
+                dctx.strokeStyle = `rgba(${r},${g},${b},${opacity})`;
+            } else { 
+                dctx.globalCompositeOperation = 'source-over'; 
+                dctx.lineWidth = size; 
+                let r = parseInt(color.slice(1,3), 16), g = parseInt(color.slice(3,5), 16), b = parseInt(color.slice(5,7), 16);
+                dctx.strokeStyle = `rgba(${r},${g},${b},${opacity})`;
+            }
+            dctx.lineTo(coords.x, coords.y); 
+            dctx.stroke();
+            dctx.beginPath();
+            dctx.moveTo(coords.x, coords.y);
+        }
+        
+        function startShape(e) {
+            saveState();
+            shapeStart = getCoords(e);
+            tempCanvas = document.createElement('canvas');
+            tempCanvas.width = dCanvas.width;
+            tempCanvas.height = dCanvas.height;
+            tempCtx = tempCanvas.getContext('2d');
+            tempCtx.drawImage(dCanvas, 0, 0);
+        }
+        
+        function drawShape(e) {
+            if (!shapeStart) return;
+            const current = getCoords(e);
+            const size = document.getElementById('size-picker').value;
+            const color = document.getElementById('color-picker').value;
+            const shapeOpacity = document.getElementById('shape-opacity-picker').value / 100;
+            
+            dctx.clearRect(0, 0, dCanvas.width, dCanvas.height);
+            dctx.drawImage(tempCanvas, 0, 0);
+            
+            const width = current.x - shapeStart.x;
+            const height = current.y - shapeStart.y;
+            
+            let r = parseInt(color.slice(1,3), 16), g = parseInt(color.slice(3,5), 16), b = parseInt(color.slice(5,7), 16);
+            dctx.strokeStyle = `rgba(${r},${g},${b},${shapeOpacity})`;
+            dctx.lineWidth = size;
+            
+            if (shapeFillMode === 'filled') {
+                dctx.fillStyle = `rgba(${r},${g},${b},${shapeOpacity * 0.5})`;
+                if (currentTool === 'rectangle') {
+                    dctx.fillRect(shapeStart.x, shapeStart.y, width, height);
+                } else if (currentTool === 'circle') {
+                    const radius = Math.sqrt(width * width + height * height);
+                    dctx.beginPath();
+                    dctx.arc(shapeStart.x, shapeStart.y, radius, 0, 2 * Math.PI);
+                    dctx.fill();
+                }
+            }
+            
+            if (currentTool === 'rectangle') {
+                dctx.strokeRect(shapeStart.x, shapeStart.y, width, height);
+            } else if (currentTool === 'circle') {
+                const radius = Math.sqrt(width * width + height * height);
+                dctx.beginPath();
+                dctx.arc(shapeStart.x, shapeStart.y, radius, 0, 2 * Math.PI);
+                dctx.stroke();
+            }
+        }
+        
+        function endPaint() { 
+            painting = false; 
+            if (shapeStart) {
+                shapeStart = null;
+                if (tempCanvas) {
+                    tempCanvas = null;
+                    tempCtx = null;
+                }
+            }
+        }
+
+        dCanvas.addEventListener('mousedown', startPaint); 
+        dCanvas.addEventListener('mousemove', draw); 
+        window.addEventListener('mouseup', endPaint);
+        dCanvas.addEventListener('touchstart', startPaint, {passive: false}); 
+        dCanvas.addEventListener('touchmove', draw, {passive: false}); 
+        dCanvas.addEventListener('touchend', endPaint);
+
+        document.getElementById('shape-outline-only').onclick = () => {
+            shapeFillMode = 'outline';
+            document.getElementById('shape-outline-only').classList.add('active-shape-option');
+            document.getElementById('shape-filled').classList.remove('active-shape-option');
+        };
+        document.getElementById('shape-filled').onclick = () => {
+            shapeFillMode = 'filled';
+            document.getElementById('shape-filled').classList.add('active-shape-option');
+            document.getElementById('shape-outline-only').classList.remove('active-shape-option');
+        };
+
+        function setTool(t) { 
+            currentTool = t; 
+            document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active-tool')); 
+            document.getElementById(`tool-${t}`).classList.add('active-tool'); 
+            
+            const penOpacityContainer = document.getElementById('pen-opacity-container');
+            const highlighterOpacityContainer = document.getElementById('highlighter-opacity-container');
+            const shapeOpacityContainer = document.getElementById('shape-opacity-container');
+            const shapeOptionsPanel = document.getElementById('shape-options-panel');
+            
+            if (t === 'highlighter') {
+                penOpacityContainer.classList.add('hidden');
+                highlighterOpacityContainer.classList.remove('hidden');
+                shapeOpacityContainer.classList.add('hidden');
+                shapeOptionsPanel.classList.add('hidden');
+            } else if (t === 'rectangle' || t === 'circle') {
+                penOpacityContainer.classList.add('hidden');
+                highlighterOpacityContainer.classList.add('hidden');
+                shapeOpacityContainer.classList.remove('hidden');
+                shapeOptionsPanel.classList.remove('hidden');
+            } else {
+                penOpacityContainer.classList.remove('hidden');
+                highlighterOpacityContainer.classList.add('hidden');
+                shapeOpacityContainer.classList.add('hidden');
+                shapeOptionsPanel.classList.add('hidden');
+            }
+        }
+
+        const penOpacityPicker = document.getElementById('pen-opacity-picker');
+        const penOpacityNumber = document.getElementById('pen-opacity-number');
+        const penOpacityValue = document.getElementById('pen-opacity-value');
+        penOpacityPicker.addEventListener('input', function() { const val = this.value; penOpacityNumber.innerText = val + '%'; penOpacityValue.innerText = val + '%'; });
+        
+        const highlighterOpacityPicker = document.getElementById('highlighter-opacity-picker');
+        const highlighterOpacityNumber = document.getElementById('highlighter-opacity-number');
+        const highlighterOpacityValue = document.getElementById('highlighter-opacity-value');
+        highlighterOpacityPicker.addEventListener('input', function() { const val = this.value; highlighterOpacityNumber.innerText = val + '%'; highlighterOpacityValue.innerText = val + '%'; });
+        
+        const shapeOpacityPicker = document.getElementById('shape-opacity-picker');
+        const shapeOpacityNumber = document.getElementById('shape-opacity-number');
+        const shapeOpacityValue = document.getElementById('shape-opacity-value');
+        shapeOpacityPicker.addEventListener('input', function() { const val = this.value; shapeOpacityNumber.innerText = val + '%'; shapeOpacityValue.innerText = val + '%'; });
+
+        function clearCurrentPage() { saveState(); dctx.clearRect(0, 0, dCanvas.width, dCanvas.height); }
+        function changePage(delta) { if(!pdfDoc) return; const next = pageNum + delta; if (next < 1) { showToast(translations[currentLang].msg_first); return; } if (next > pdfDoc.numPages) { showToast(translations[currentLang].msg_last); return; } pageDrawings[pageNum] = dCanvas.toDataURL(); pageNum = next; renderPage(); }
+        function showToast(msg) { Swal.fire({ toast: true, position: 'bottom-start', title: msg, icon: 'info', showConfirmButton: false, timer: 2000 }); }
+
+        async function saveAndDownloadPDF() {
+            pageDrawings[pageNum] = dCanvas.toDataURL(); Swal.fire({ title: 'Processing PDF...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+            const pdf = new jsPDF({ orientation: canvas.width > canvas.height ? 'l' : 'p', unit: 'px', format: [canvas.width, canvas.height] });
+            if(pdfDoc) { for(let i=1; i<=pdfDoc.numPages; i++) { const page = await pdfDoc.getPage(i); const vp = page.getViewport({scale: 2}); const temp = document.createElement('canvas'); temp.width = vp.width; temp.height = vp.height; await page.render({canvasContext: temp.getContext('2d'), viewport: vp}).promise; pdf.addImage(temp.toDataURL('image/jpeg', 0.8), 'JPEG', 0, 0, vp.width, vp.height); if(pageDrawings[i]) pdf.addImage(pageDrawings[i], 'PNG', 0, 0, vp.width, vp.height); if(i < pdfDoc.numPages) pdf.addPage([vp.width, vp.height]); } } else { pdf.addImage(canvas.toDataURL('image/jpeg'), 'JPEG', 0, 0, canvas.width, canvas.height); pdf.addImage(dCanvas.toDataURL('image/png'), 'PNG', 0, 0, canvas.width, canvas.height); }
+            pdf.save("Study_Notes.pdf"); Swal.close();
+        }
+
+        function closeFileWithCheck() { Swal.fire({ title: translations[currentLang].msg_save, showCancelButton: true, showDenyButton: true, confirmButtonText: 'Yes', denyButtonText: 'No' }).then(res => { if(res.isConfirmed) saveAndDownloadPDF().then(initWhiteboard); else if(res.isDenied) initWhiteboard(); }); }
+        function toggleDarkMode() { document.body.classList.toggle('dark-mode'); document.getElementById('theme-icon').className = document.body.classList.contains('dark-mode') ? 'fas fa-sun' : 'fas fa-moon'; }
+        
+        function updateTimerSettings() { 
+            const val = parseInt(document.getElementById('timer-select').value); 
+            clearInterval(timer); isRunning = false; isRestMode = false;
+            currentWorkMinutes = val;
+            if (val === 25) currentRestMinutes = 5;
+            else if (val === 50) currentRestMinutes = 10;
+            else if (val === 15) currentRestMinutes = 3;
+            else currentRestMinutes = 5;
+            timeLeft = currentWorkMinutes * 60;
+            updateTimerDisplay();
+            document.getElementById('play-btn').innerHTML = '<i class="fas fa-play"></i>';
+            const timerContainer = document.getElementById('timer-container');
+            timerContainer.classList.remove('rest-mode-active');
+            updateRestStatusDisplay();
+        }
+        
+        function updateTimerDisplay() { let m = Math.floor(timeLeft/60), s = timeLeft%60; document.getElementById('timer-display').innerText = `${m}:${s<10?'0':''}${s}`; }
+        function updateRestStatusDisplay() { const restStatusEl = document.getElementById('rest-status'); const t = translations[currentLang]; if (isRestMode) { restStatusEl.innerHTML = `☕ ${t.rest_start || 'وقت الراحة!'} (${currentRestMinutes} دقيقة)`; restStatusEl.style.color = '#10b981'; } else { restStatusEl.innerHTML = `📚 ${t.work_start || 'وقت المذاكرة!'} (${currentWorkMinutes} دقيقة)`; restStatusEl.style.color = '#8b5cf6'; } }
+        function startRestPeriod() { isRestMode = true; timeLeft = currentRestMinutes * 60; updateTimerDisplay(); document.getElementById('timer-container').classList.add('rest-mode-active'); const restSound = document.getElementById('rest-sound'); if (restSound) restSound.play().catch(e => console.log('صوت الراحة:', e)); const t = translations[currentLang]; Swal.fire({ title: '🍃 ' + (t.rest_start || 'وقت الراحة!'), text: `استرخِ لمدة ${currentRestMinutes} دقائق`, icon: 'success', timer: 3000, showConfirmButton: false, background: '#10b981', color: 'white' }); updateRestStatusDisplay(); }
+        function startWorkPeriod() { isRestMode = false; timeLeft = currentWorkMinutes * 60; updateTimerDisplay(); document.getElementById('timer-container').classList.remove('rest-mode-active'); sessions++; document.getElementById('session-count').innerText = sessions; const t = translations[currentLang]; Swal.fire({ title: '📚 ' + (t.work_start || 'وقت المذاكرة!'), text: `جلسة رقم ${sessions}`, icon: 'info', timer: 2000, showConfirmButton: false }); updateRestStatusDisplay(); }
+        function tick() { if(timeLeft > 0) { timeLeft--; updateTimerDisplay(); } else { clearInterval(timer); isRunning = false; document.getElementById('alert-sound').play().catch(e => console.log('صوت التنبيه:', e)); if (isRestMode) { startWorkPeriod(); } else { startRestPeriod(); } timer = setInterval(tick, 1000); isRunning = true; document.getElementById('play-btn').innerHTML = '<i class="fas fa-pause"></i>'; } }
+        function toggleTimer() { if(isRunning) { clearInterval(timer); document.getElementById('play-btn').innerHTML = '<i class="fas fa-play"></i>'; } else { timer = setInterval(tick, 1000); document.getElementById('play-btn').innerHTML = '<i class="fas fa-pause"></i>'; } isRunning = !isRunning; }
+
+        // Event Listeners for Chat
+        document.getElementById('chatToggleBtn').addEventListener('click', toggleChat);
+        document.getElementById('closeChatBtn').addEventListener('click', closeChat);
+        document.getElementById('chatHeader').addEventListener('click', (e) => {
+            if (e.target !== document.getElementById('closeChatBtn')) {
+                toggleChat();
+            }
+        });
+        
+        window.addEventListener('resize', autoFit); 
+        updateUI(); 
+        initWhiteboard();
+        updateTimerSettings();
+        setTool('pen');
+        
+        // Initialize chat position
+        updateChatPosition();
+    </script>
+</body>
+</html>
