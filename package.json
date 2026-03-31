@@ -1,7 +1,6 @@
-﻿{
+{
   "name": "focushub-pro",
   "version": "1.0.0",
-  "description": "Study tool with AI assistant",
   "dependencies": {
     "node-fetch": "^2.6.7"
   }
