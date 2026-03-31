@@ -584,10 +584,11 @@
 
     <script>
         // ============== AI Chat Bot Configuration ==============
-        // ⚠️ هام: قم بتغيير هذا المفتاح بمفتاحك الشخصي من موقع DeepSeek
-        // روح على: https://platform.deepseek.com/ وسجل دخولك ثم أنشئ مفتاح جديد
-        const API_KEY = "sk-46e6b214760d4654a640bd1bfab8e882"; // استبدل هذا بمفتاحك الحقيقي
-        const API_URL = "https://api.deepseek.com/v1/chat/completions";
+
+const API_URL = "/.netlify/functions/chat";
+
+let chatMessages = document.getElementById('chatMessages');
+let chatInput = document.getElementById('chatInput');
         
         let chatMessages = document.getElementById('chatMessages');
         let chatInput = document.getElementById('chatInput');
@@ -666,45 +667,32 @@
             } catch (error) {
                 removeTypingIndicator();
                 console.error('API Error:', error);
-                addMessage('❌ عذراً، حدث خطأ في الاتصال. يرجى التحقق من مفتاح API والمحاولة مرة أخرى.', false);
+                addMessage('❌ عذراً، حدث خطأ في الاتصال. يرجى التحقق من الإتصال والمحاولة مرة أخرى.', false);
             }
         }
         
-        async function callDeepSeekAPI(userMessage) {
-            const systemPrompt = `أنت مساعد تعليمي ذكي متخصص في مساعدة الطلاب. أنت تتحدث باللغة العربية الفصحى. 
-            مهمتك هي:
-            1. الإجابة على أسئلة الطلاب الدراسية بشكل دقيق ومفيد
-            2. شرح المفاهيم الصعبة بطريقة مبسطة
-            3. تقديم أمثلة وتوضيحات عند الحاجة
-            4. تشجيع الطالب على التعلم والاستمرار
-            كن ودوداً ومحفزاً في ردودك.`;
-            
-            const response = await fetch(API_URL, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${API_KEY}`
-                },
-                body: JSON.stringify({
-                    model: "deepseek-chat",
-                    messages: [
-                        { role: "system", content: systemPrompt },
-                        { role: "user", content: userMessage }
-                    ],
-                    temperature: 0.7,
-                    max_tokens: 1000,
-                    stream: false
-                })
-            });
-            
-            if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.error?.message || 'API request failed');
-            }
-            
-            const data = await response.json();
-            return data.choices[0].message.content;
+async function callDeepSeekAPI(userMessage) {
+    try {
+        const response = await fetch(API_URL, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ message: userMessage })
+        });
+        
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error || 'API request failed');
         }
+        
+        const data = await response.json();
+        return data.reply;
+    } catch (error) {
+        console.error('API Error:', error);
+        throw new Error('فشل في الاتصال بالخادم');
+    }
+}
         
         function escapeHtml(text) {
             const div = document.createElement('div');
